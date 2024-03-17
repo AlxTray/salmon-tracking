@@ -8,7 +8,7 @@ import csv
 import os
 
 # Create VideoCapture object
-video_path = 'videos/video1.mp4'
+video_path = 'videos/salmon-fixed.mp4'
 cap = cv2.VideoCapture(video_path)
 
 # Create background subtractor using GSOC
