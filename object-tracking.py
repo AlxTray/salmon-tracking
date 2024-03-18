@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from inference_sdk import InferenceHTTPClient
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use('TkAgg')
@@ -8,11 +9,8 @@ import csv
 import os
 
 # Create VideoCapture object
-video_path = 'videos/salmon-fixed.mp4'
+video_path = 'videos/salmon-cut-1.mp4'
 cap = cv2.VideoCapture(video_path)
-
-# Create background subtractor using GSOC
-bs_gsoc = cv2.bgsegm.createBackgroundSubtractorGSOC()
 
 # Create a 3D plot for center of mass
 fig = plt.figure()
@@ -25,54 +23,56 @@ csv_file_path = 'results/3d-coordinates.csv'
 if not os.path.exists('results'):
     os.makedirs('results')
 
-while True:
-    ret, frame = cap.read()
+project_id = "salmon-dnwyp"
+model_version = 11
 
-    if not ret:
-        break
+client = InferenceHTTPClient(
+    api_url="http://localhost:9001",
+    api_key="pTqt5atPorx55y1rXXiC",
+)
 
-    # Apply background subtraction using GSOC
-    fg_mask_gsoc = bs_gsoc.apply(frame)
+ret, frame = cap.read()
+prev_predictions = None
 
-    # Find contours in the foreground mask
-    contours, _ = cv2.findContours(fg_mask_gsoc, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+while ret:
     # Open CSV file for writing/appending
     with open(csv_file_path, mode='a', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
 
-        for contour in contours:
-            # Compute area and center of mass for each contour
-            area = cv2.contourArea(contour)
-            if 1000 <= area <= 20000:
-                # Draw bounding box if the area constraints are met
-                x, y, w, h = cv2.boundingRect(contour)
+        predictions = client.infer(frame, model_id=f"{project_id}/{model_version}")["predictions"]
+        predictions = sorted(predictions, key=lambda x: x["x"])
+
+        if prev_predictions is not None:
+            for prediction, prev_prediction in zip(predictions, prev_predictions):
+
+                x = int(prediction["x"])
+                y = int(prediction["y"])
+                w = int(prediction["width"])
+                h = int(prediction["height"])
+
                 cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-                # Compute the center of mass
-                M = cv2.moments(contour)
-                if M["m00"] != 0:
-                    cx = int(M["m10"] / M["m00"])
-                    cy = int(M["m01"] / M["m00"])
+                cx_prev = int(prev_prediction["x"] + (prev_prediction["width"] / 2))
+                cy_prev = int(prev_prediction["y"] + (prev_prediction["height"] / 2))
+                cx_current = int(x + (w / 2))
+                cy_current = int(y + (h / 2))
 
-                    # Draw a circle at the center of mass
-                    cv2.circle(frame, (cx, cy), 5, (255, 0, 0), -1)
+                distance = np.linalg.norm(np.array((cx_current - cy_current)) - np.array((cx_prev - cy_prev)))
 
-                    # Plot the center of mass in the 3D plot
-                    ax.scatter(cx, cy, cap.get(cv2.CAP_PROP_POS_FRAMES), c='r', marker='o')
+                cv2.putText(frame, str(distance), (cx_current, cy_current + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
 
-                    # Write 3D coordinates to CSV file
-                    csv_writer.writerow([cx, cy, cap.get(cv2.CAP_PROP_POS_FRAMES)])
+                # Draw a circle at the center of mass
+                cv2.circle(frame, (cx_current, cy_current), 5, (255, 0, 0), -1)
 
-    # Resize both images to half their original size
-    frame_resized = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-    fg_mask_gsoc_resized = cv2.resize(cv2.cvtColor(fg_mask_gsoc, cv2.COLOR_GRAY2BGR), (0, 0), fx=0.5, fy=0.5)
+                # Plot the center of mass in the 3D plot
+                ax.scatter(cx_current, cy_current, cap.get(cv2.CAP_PROP_POS_FRAMES), c='r', marker='o')
 
-    # Create a side-by-side view of the resized colored image and GSOC result
-    result_display = np.hstack((frame_resized, fg_mask_gsoc_resized))
+                # Write 3D coordinates to CSV file
+                csv_writer.writerow([cx_current, cy_current, cap.get(cv2.CAP_PROP_POS_FRAMES)])
+
 
     # Display the result
-    cv2.imshow('Resized Colored Image vs GSOC Result', result_display)
+    cv2.imshow('Detected Salmon and their Speed', frame)
 
     # Update the 3D plot
     ax.set_xlabel('X coordinate')
@@ -81,6 +81,10 @@ while True:
     ax.set_title('Center of Mass in 3D')
 
     plt.pause(0.001)
+
+    
+    prev_predictions = predictions
+    ret, frame = cap.read()
 
     # Exit the loop if 'q' is pressed
     if cv2.waitKey(30) & 0xFF == ord('q'):

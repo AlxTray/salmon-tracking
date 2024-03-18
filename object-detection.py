@@ -21,7 +21,7 @@ def my_custom_sink(predictions: dict, video_frame: VideoFrame):
 
 pipeline = InferencePipeline.init(
     model_id="salmon-dnwyp/11",
-    video_reference="videos/salmon-cut-1.mp4",
+    video_reference="videos/salmon-cut-fixed.mp4",
     on_prediction=my_custom_sink,
 )
 
