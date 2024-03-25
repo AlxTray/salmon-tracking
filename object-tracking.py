@@ -32,7 +32,6 @@ client = InferenceHTTPClient(
 )
 
 ret, frame = cap.read()
-prev_predictions = None
 
 while ret:
     # Open CSV file for writing/appending
@@ -40,35 +39,32 @@ while ret:
         csv_writer = csv.writer(csv_file)
 
         predictions = client.infer(frame, model_id=f"{project_id}/{model_version}")["predictions"]
-        predictions = sorted(predictions, key=lambda x: x["x"])
 
-        if prev_predictions is not None:
-            for prediction, prev_prediction in zip(predictions, prev_predictions):
+        for prediction in predictions:
 
-                x = int(prediction["x"])
-                y = int(prediction["y"])
-                w = int(prediction["width"])
-                h = int(prediction["height"])
+            cx = int(prediction["x"])
+            cy = int(prediction["y"])
+            w = int(prediction["width"])
+            h = int(prediction["height"])
 
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            x0 = cx - w / 2
+            x1 = cx + w / 2
+            y0 = cy - h / 2
+            y1 = cy + h / 2
+            box_start = (int(x0), int(y0))
+            box_end = (int(x1), int(y1))
+                
+            # Draw bounding box
+            cv2.rectangle(frame, box_start, box_end, (0, 255, 0), 2)
 
-                cx_prev = int(prev_prediction["x"] + (prev_prediction["width"] / 2))
-                cy_prev = int(prev_prediction["y"] + (prev_prediction["height"] / 2))
-                cx_current = int(x + (w / 2))
-                cy_current = int(y + (h / 2))
+            # Draw a circle at the center of mass
+            cv2.circle(frame, (cx, cy), 5, (255, 0, 0), -1)
 
-                distance = np.linalg.norm(np.array((cx_current - cy_current)) - np.array((cx_prev - cy_prev)))
+            # Plot the center of mass in the 3D plot
+            ax.scatter(cx, cy, cap.get(cv2.CAP_PROP_POS_FRAMES), c='r', marker='o')
 
-                cv2.putText(frame, str(distance), (cx_current, cy_current + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
-
-                # Draw a circle at the center of mass
-                cv2.circle(frame, (cx_current, cy_current), 5, (255, 0, 0), -1)
-
-                # Plot the center of mass in the 3D plot
-                ax.scatter(cx_current, cy_current, cap.get(cv2.CAP_PROP_POS_FRAMES), c='r', marker='o')
-
-                # Write 3D coordinates to CSV file
-                csv_writer.writerow([cx_current, cy_current, cap.get(cv2.CAP_PROP_POS_FRAMES)])
+            # Write 3D coordinates to CSV file
+            csv_writer.writerow([cx, cy, cap.get(cv2.CAP_PROP_POS_FRAMES)])
 
 
     # Display the result
@@ -82,8 +78,7 @@ while ret:
 
     plt.pause(0.001)
 
-    
-    prev_predictions = predictions
+
     ret, frame = cap.read()
 
     # Exit the loop if 'q' is pressed
