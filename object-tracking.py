@@ -39,7 +39,12 @@ tracker = DeepSort(model_path="deep_sort/deep/checkpoint/ckpt.t7")
 
 ret, frame = cap.read()
 
+previous_frame_tracker = None
+start_time = None
+
 while ret:
+    tracker_output = None
+
     # Open CSV file for writing/appending
     with open(csv_file_path, mode='a', newline='') as csv_file:
         csv_writer = csv.writer(csv_file)
@@ -71,17 +76,38 @@ while ret:
         
         if bbox_list:
             tracker_output = tracker.update(np.array(bbox_list), np.array(confidence_list), frame)
-        
-            for track in tracker_output:
-                x1, y1, x2, y2, id = track
-           
-                box_start = (int(x1), int(y1))
-                box_end = (int(x2), int(y2))
-                
-                # Draw bounding box
-                cv2.rectangle(frame, box_start, box_end, (0, 255, 0), 2)
+            
+            if previous_frame_tracker is not None:
+                for track in tracker_output:
+                    x1, y1, x2, y2, id = track
 
-                cv2.putText(frame, str(id), box_start, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+                    for prev_track in previous_frame_tracker:
+                        prev_x1, prev_y1, prev_x2, prev_y2, prev_id = prev_track
+
+                        if id == prev_id: 
+                            box_start = (int(x1), int(y1))
+                            box_end = (int(x2), int(y2))
+                
+                            # Draw bounding box
+                            cv2.rectangle(frame, box_start, box_end, (0, 255, 0), 2)
+                            
+                            # Calculate centre point of current frame and previous
+                            cx = (x1 + x2) / 2
+                            cy = (y1 + y2) / 2
+                            prev_cx = (prev_x1 + prev_x2) / 2
+                            prev_cy = (prev_y1 + prev_y2) / 2
+
+                            distance = (cx + cy) - (prev_cx + prev_cy)
+                            
+                            # Calculate time passed between frame
+                            time_per_frame = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
+
+                            speed = round((distance / time_per_frame), 2)
+
+                            cv2.putText(frame, str(speed) + "pixels/sec", box_end, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+                            cv2.putText(frame, str(id), box_start, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+
+                            break
 
 
 
@@ -96,7 +122,8 @@ while ret:
 
     plt.pause(0.001)
 
-
+    previous_frame_tracker = tracker_output
+    start_time = cv2.getTickCount()
     ret, frame = cap.read()
 
     # Exit the loop if 'q' is pressed
