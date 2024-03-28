@@ -87,9 +87,13 @@ while ret:
                         if id == prev_id: 
                             box_start = (int(x1), int(y1))
                             box_end = (int(x2), int(y2))
+
+                            information_box_start = (int(x1), int(y1 - 20))
+                            information_box_end = (int(x2), int(y1))
                 
                             # Draw bounding box
-                            cv2.rectangle(frame, box_start, box_end, (0, 255, 0), 2)
+                            cv2.rectangle(frame, box_start, box_end, (0, 255, 0), 1)
+                            cv2.rectangle(frame, information_box_end, information_box_start, (0, 255, 0), -1)
                             
                             # Calculate centre point of current frame and previous
                             cx = (x1 + x2) / 2
@@ -104,8 +108,8 @@ while ret:
 
                             speed = round((distance / time_per_frame), 2)
 
-                            cv2.putText(frame, str(speed) + "pixels/sec", box_end, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
-                            cv2.putText(frame, str(id), box_start, cv2.FONT_HERSHEY_SIMPLEX, 1, 255)
+                            cv2.putText(frame, str(speed) + "pixels/sec", (int(x1 + 175), int(y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
+                            cv2.putText(frame, "Salmon ID: " + str(id), (int(x1 + 5), int(y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
 
                             break
 
