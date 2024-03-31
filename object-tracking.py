@@ -8,11 +8,12 @@ matplotlib.use('TkAgg')
 from mpl_toolkits.mplot3d import Axes3D
 import csv
 import os
+import math
 
 from deep_sort.deep_sort import DeepSort
 
 # Create VideoCapture object
-video_path = 'videos/salmon-cut-1.mp4'
+video_path = 'videos/original-salmon.webm'
 cap = cv2.VideoCapture(video_path)
 
 # Create a 3D plot for center of mass
@@ -100,15 +101,18 @@ while ret:
                             cy = (y1 + y2) / 2
                             prev_cx = (prev_x1 + prev_x2) / 2
                             prev_cy = (prev_y1 + prev_y2) / 2
-
-                            distance = (cx + cy) - (prev_cx + prev_cy)
                             
                             # Calculate time passed between frame
                             time_per_frame = (cv2.getTickCount() - start_time) / cv2.getTickFrequency()
+                            #######################################################
+                            distance = (cx + cy) - (prev_cx + prev_cy)
+                            linear_speed = round((distance / time_per_frame), 2)
+                            #######################################################
+                            change_in_angle = math.degrees(math.atan2((x2 - prev_x1), (y2 - prev_y1)))
+                            angular_speed = round((change_in_angle / time_per_frame), 2)
 
-                            speed = round((distance / time_per_frame), 2)
-
-                            cv2.putText(frame, str(speed) + "pixels/sec", (int(x1 + 175), int(y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
+                            cv2.putText(frame, str(linear_speed) + " pixels/sec", (int(x1 + 175), int(y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
+                            cv2.putText(frame, str(angular_speed) + " deg/sec", (int(x1 + 175), int(y1 + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
                             cv2.putText(frame, "Salmon ID: " + str(id), (int(x1 + 5), int(y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
 
                             break
