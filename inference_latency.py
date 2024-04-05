@@ -1,0 +1,29 @@
+from inference import InferencePipeline
+from inference.core.interfaces.camera.entities import VideoFrame
+import cv2
+import supervision as sv
+
+# create a simple box annotator to use in our custom sink
+annotator = sv.BoxAnnotator()
+
+def my_custom_sink(predictions: dict, video_frame: VideoFrame):
+    # get the text labels for each prediction
+    labels = [p["class"] for p in predictions["predictions"]]
+    # load our predictions into the Supervision Detections api
+    detections = sv.Detections.from_inference(predictions)
+    # annotate the frame using our supervision annotator, the video_frame, the predictions (as supervision Detections), and the prediction labels
+    image = annotator.annotate(
+        scene=video_frame.image.copy(), detections=detections, labels=labels
+    )
+    # display the annotated image
+    cv2.imshow("Predictions", image)
+    cv2.waitKey(1)
+
+pipeline = InferencePipeline.init(
+    model_id="salmon-dnwyp/11",
+    video_reference="videos/salmon-cut-fixed.mp4",
+    on_prediction=my_custom_sink,
+)
+
+pipeline.start()
+pipeline.join()
