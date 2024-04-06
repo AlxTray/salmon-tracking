@@ -1,29 +1,25 @@
-from inference import InferencePipeline
-from inference.core.interfaces.camera.entities import VideoFrame
+import time
+from inference_sdk import InferenceHTTPClient
+import sys
 import cv2
-import supervision as sv
+import csv
 
-# create a simple box annotator to use in our custom sink
-annotator = sv.BoxAnnotator()
 
-def my_custom_sink(predictions: dict, video_frame: VideoFrame):
-    # get the text labels for each prediction
-    labels = [p["class"] for p in predictions["predictions"]]
-    # load our predictions into the Supervision Detections api
-    detections = sv.Detections.from_inference(predictions)
-    # annotate the frame using our supervision annotator, the video_frame, the predictions (as supervision Detections), and the prediction labels
-    image = annotator.annotate(
-        scene=video_frame.image.copy(), detections=detections, labels=labels
-    )
-    # display the annotated image
-    cv2.imshow("Predictions", image)
-    cv2.waitKey(1)
+project_id = "salmon-dnwyp"
+model_version = sys.argv[1]
 
-pipeline = InferencePipeline.init(
-    model_id="salmon-dnwyp/11",
-    video_reference="videos/salmon-cut-fixed.mp4",
-    on_prediction=my_custom_sink,
+client = InferenceHTTPClient(
+     api_url="http://localhost:9001",
+     api_key="pTqt5atPorx55y1rXXiC",
 )
 
-pipeline.start()
-pipeline.join()
+with open("results/latency.csv", mode="a", newline="") as csv_file:
+    csv_writer = csv.writer(csv_file)
+    
+    for i in range(300):
+        start = time.time()
+        predictions = client.infer(cv2.imread(sys.argv[2]), model_id=f"{project_id}/{model_version}")["predictions"]
+        end = time.time()
+
+        latency = end - start
+        csv_writer.writerow([sys.argv[1], latency])
