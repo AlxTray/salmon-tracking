@@ -90,18 +90,11 @@ while ret:
 
             confidence = prediction["confidence"]
             confidence_list.append(confidence)
-
-            # Draw a circle at the center of mass
-            cv2.circle(frame, (cx, cy), 5, (255, 0, 0), -1)
-
-            # Plot the center of mass in the 3D plot
-            ax.scatter(cx, cy, cap.get(cv2.CAP_PROP_POS_FRAMES), c='r', marker='o')
         
         if bbox_list:
             tracker_output = tracker.update(np.array(bbox_list), np.array(confidence_list), frame)
             
             if previous_frame_tracker is not None:
-                matching_salmons
 
                 for track in tracker_output:
                     x1, y1, x2, y2, id = track
@@ -139,8 +132,14 @@ while ret:
                             cv2.putText(frame, str(angular_speed) + " deg/sec", (int(x1 + 175), int(y1 + 20)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
                             cv2.putText(frame, "Salmon ID: " + str(id), (int(x1 + 5), int(y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.7, 255)
 
+                            # Draw a circle at the center of mass
+                            cv2.circle(frame, (int(cx), int(cy)), 5, (255, 0, 0), -1)
+
+                            # Plot the center of mass in the 3D plot
+                            ax.scatter(int(cx), int(cy), cap.get(cv2.CAP_PROP_POS_FRAMES), c='r', marker='o')
+
                             # Write trajectories to CSV file
-                            csv_writer.writerow([id, x1, y1, x2, y2, linear_speed, angular_speed])
+                            csv_writer.writerow([id, x1, y1, x2, y2, cx, cy, linear_speed, angular_speed])
 
                             break
 
