@@ -17,7 +17,7 @@ Once the Docker image has been sucessfully pulled and started, simply run the *s
 
 For inferring on a video:
 ```
-python salmon_tracking.py --video path\to\video\file.mp4
+python salmon_tracking.py --video path/to/video/file.mp4
 ```
 
 For inferring on a camera stream:
